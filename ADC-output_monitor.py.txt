@@ -1,0 +1,37 @@
+import spidev
+import time
+from datetime import datetime
+
+spi = spidev.SpiDev()
+spi.open(0, 0)  # Bus 0, Device (CS) 0
+spi.max_speed_hz = 24000000
+spi.mode = 2  # SPI Mode 2 (CPOL = 1, CPHA = 0)
+
+log_file = "/home/pi/adc_log.txt"  # Update path if needed
+
+def read_adc():
+    dummy_write = [0x00, 0x00]
+    spi.xfer2(dummy_write)
+    time.sleep(0.001)
+
+    result = spi.readbytes(2)
+    value = (result[0] << 8) | result[1]
+    return value
+
+try:
+    print("Starting ADC logging every 5 minutes...")
+    while True:
+        adc_value = read_adc()
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        with open(log_file, "a") as f:
+            f.write(f"{timestamp} - ADC Value (hex): {hex(adc_value)}\n")
+
+        print(f"Logged at {timestamp}: {adc_value}")
+        time.sleep(300)
+
+except KeyboardInterrupt:
+    print("Logging interrupted by user.")
+
+finally:
+    spi.close()
